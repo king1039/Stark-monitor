@@ -48,10 +48,10 @@ spec:
   volumeClaimTemplates:
     - metadata:
         name: postgres-data
-    spec:
-      accessModes:
-        - ReadWriteOnce
-      storageClassName: local-path
-      resources:
-        requests:
-          storage: 5Gi
+        spec:
+          accessModes:
+            - ReadWriteOnce
+          storageClassName: local-path
+          resources:
+            requests:
+              storage: 5Gi
