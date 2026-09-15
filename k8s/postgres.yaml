@@ -31,7 +31,7 @@ spec:
     spec:
       containers:
         - name: postgres
-          image: postgres:16-alpine
+          image: m.daocloud.io/docker.io/library/postgres:16-alpine
 
           ports:
             - containerPort: 5432
