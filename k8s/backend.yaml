@@ -38,6 +38,7 @@ spec:
 
           ports:
             - containerPort: 8080
+              hostPort: 18080
 
           env:
             - name: REDIS_ADDR
