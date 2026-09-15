@@ -34,7 +34,7 @@ spec:
             - containerPort: 5432
           env:
             - name: POSTGRES_DB
-              value: stark-monitor
+              value: stark_monitor
             - name: POSTGRES_USER
               value: stark
             - name: POSTGRES_PASSWORD
