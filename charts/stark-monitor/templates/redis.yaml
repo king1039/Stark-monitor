@@ -20,6 +20,8 @@ kind: PersistentVolumeClaim
 metadata:
   name: redis-data
   namespace: {{ .Values.namespace }}
+  annotations:
+    helm.sh/resource-policy: keep
 spec:
   accessModes:
     - ReadWriteOnce
