@@ -122,3 +122,31 @@ backend:
     limits:
       cpu: 500m
       memory: 512Mi
+
+dbController:
+  enabled: true
+
+  image:
+    repository: ghcr.io/king1039/zf-monitor-db-controller
+    tag: "latest"
+    pullPolicy: Always
+
+  replicas: 1
+
+  config:
+    existingSecret: db-controller-config
+    secretKey: config.yaml
+
+  hostPath:
+    enabled: true
+    path: /opt/zf-monitor-docker-data/backend
+    mountPath: /app/data
+
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 250m
+      memory: 256Mi
+  

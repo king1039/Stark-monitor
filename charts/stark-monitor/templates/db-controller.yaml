@@ -1,0 +1,55 @@
+{{- if .Values.dbController.enabled }}
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: db-controller
+  namespace: {{ .Values.namespace }}
+spec:
+  replicas: {{ .Values.dbController.replicas }}
+
+  selector:
+    matchLabels:
+      app: db-controller
+
+  template:
+    metadata:
+      labels:
+        app: db-controller
+
+    spec:
+      containers:
+        - name: db-controller
+          image: "{{ .Values.dbController.image.repository }}:{{ .Values.dbController.image.tag }}"
+          imagePullPolicy: {{ .Values.dbController.image.pullPolicy }}
+
+          resources:
+{{ toYaml .Values.dbController.resources | indent 12 }}
+
+          volumeMounts:
+            - name: config
+              mountPath: /app/config.yaml
+              subPath: {{ .Values.dbController.config.secretKey }}
+
+{{- if .Values.dbController.hostPath.enabled }}
+
+            - name: data
+              mountPath: {{ .Values.dbController.hostPath.mountPath }}
+
+{{- end }}
+
+      volumes:
+        - name: config
+          secret:
+            secretName: {{ .Values.dbController.config.existingSecret }}
+
+{{- if .Values.dbController.hostPath.enabled }}
+
+        - name: data
+          hostPath:
+            path: {{ .Values.dbController.hostPath.path }}
+            type: DirectoryOrCreate
+
+{{- end }}
+
+{{- end }}
