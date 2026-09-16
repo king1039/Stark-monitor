@@ -1,0 +1,72 @@
+{{- if .Values.backend.enabled }}
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend
+  namespace: {{ .Values.namespace }}
+spec:
+  type: {{ .Values.backend.service.type }}
+
+  selector:
+    app: backend
+
+  ports:
+    - name: http
+      port: {{ .Values.backend.service.port }}
+      targetPort: {{ .Values.backend.containerPort }}
+      nodePort: {{ .Values.backend.service.nodePort }}
+
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+  namespace: {{ .Values.namespace }}
+spec:
+  replicas: {{ .Values.backend.replicas }}
+
+  selector:
+    matchLabels:
+      app: backend
+
+  template:
+    metadata:
+      labels:
+        app: backend
+
+    spec:
+      containers:
+        - name: backend
+          image: "{{ .Values.backend.image.repository }}:{{ .Values.backend.image.tag }}"
+          imagePullPolicy: {{ .Values.backend.image.pullPolicy }}
+
+          ports:
+            - name: http
+              containerPort: {{ .Values.backend.containerPort }}
+              hostPort: {{ .Values.backend.hostPort }}
+
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.backend.database.existingSecret }}
+                  key: {{ .Values.backend.database.urlKey }}
+
+            - name: REDIS_ADDR
+              value: {{ .Values.backend.redis.addr | quote }}
+
+            - name: KAFKA_ADDR
+              value: {{ .Values.backend.kafka.addr | quote }}
+
+            - name: KAFKA_TOPIC
+              value: {{ .Values.backend.kafka.topic | quote }}
+
+            - name: KAFKA_CONSUMER_GROUP
+              value: {{ .Values.backend.kafka.consumerGroup | quote }}
+
+          resources:
+{{ toYaml .Values.backend.resources | indent 12 }}
+
+{{- end }}

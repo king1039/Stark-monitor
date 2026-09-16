@@ -84,3 +84,41 @@ kafka:
     name: stark.metrics.raw
     partitions: 6
     replicationFactor: 1
+
+backend:
+  enabled: true
+
+  image:
+    repository: ghcr.io/king1039/zf-monitor-back
+    tag: "latest"
+    pullPolicy: Always
+
+  replicas: 1
+
+  containerPort: 8080
+  hostPort: 18080
+
+  service:
+    type: NodePort
+    port: 8080
+    nodePort: 30080
+
+  database:
+    existingSecret: backend-secret
+    urlKey: database-url
+
+  redis:
+    addr: redis:6379
+
+  kafka:
+    addr: kafka:9092
+    topic: stark.metrics.raw
+    consumerGroup: stark-monitor-metrics-v1
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
