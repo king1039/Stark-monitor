@@ -71,7 +71,7 @@ kafka:
     advertisedListeners: "PLAINTEXT://kafka:9092"
     controllerListenerNames: "CONTROLLER"
     listenerSecurityProtocolMap: "CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT"
-    controllerQuorumVoters: "1@kafka-0.kafka:9093"
+    controllerQuorumVoters: "1@kafka:9093"
 
   clusterId: "4L6g3nShT-eMCtK--X86sw"
 
