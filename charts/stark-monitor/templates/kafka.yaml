@@ -152,7 +152,7 @@ spec:
             - |
               echo "Waiting for Kafka..."
 
-              until kafka-topics.sh \
+              until /opt/kafka/bin/kafka-topics.sh \
                 --bootstrap-server kafka:{{ .Values.kafka.service.brokerPort }} \
                 --list >/dev/null 2>&1
               do
@@ -162,7 +162,7 @@ spec:
 
               echo "Kafka is ready."
 
-              kafka-topics.sh \
+              /opt/kafka/bin/kafka-topics.sh \
                 --bootstrap-server kafka:{{ .Values.kafka.service.brokerPort }} \
                 --create \
                 --if-not-exists \
