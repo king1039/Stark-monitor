@@ -61,8 +61,6 @@ spec:
   volumeClaimTemplates:
     - metadata:
         name: postgres-data
-        annotations:
-          helm.sh/resource-policy: keep
       spec:
         accessModes:
           - ReadWriteOnce
