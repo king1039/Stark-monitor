@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -69,5 +70,67 @@ func TestPrometheusURLUsesDefaultWhenUnset(t *testing.T) {
 
 	if got := prometheusURL(); got != defaultPrometheusURL {
 		t.Fatalf("unexpected default URL: %s", got)
+	}
+}
+
+func TestHandlePrometheusNodeSummary(t *testing.T) {
+	values := map[string]string{
+		nodeCPUQuery:    "12.34",
+		nodeMemoryQuery: "45.67",
+		nodeDiskQuery:   "38.90",
+		nodeStatusQuery: "1",
+	}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		query := r.URL.Query().Get("query")
+		value, ok := values[query]
+		if !ok {
+			t.Fatalf("unexpected query: %s", query)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"status":"success","data":{"resultType":"vector","result":[{"value":["1","` + value + `"]}]}}`))
+	}))
+	defer server.Close()
+
+	previousURL := os.Getenv("PROMETHEUS_URL")
+	if err := os.Setenv("PROMETHEUS_URL", server.URL); err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = os.Setenv("PROMETHEUS_URL", previousURL) }()
+
+	recorder := httptest.NewRecorder()
+	handlePrometheusNodeSummary(recorder, httptest.NewRequest(http.MethodGet, "/api/prometheus/node/summary", nil))
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("unexpected status: %d body=%s", recorder.Code, recorder.Body.String())
+	}
+	var summary prometheusNodeSummary
+	if err := json.Unmarshal(recorder.Body.Bytes(), &summary); err != nil {
+		t.Fatal(err)
+	}
+	if summary.Status != "online" || summary.CPU != 12.34 || summary.Memory != 45.67 || summary.Disk != 38.90 {
+		t.Fatalf("unexpected summary: %+v", summary)
+	}
+}
+
+func TestHandlePrometheusNodeSummaryReturnsBadGatewayOnFailure(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "query failed", http.StatusBadRequest)
+	}))
+	defer server.Close()
+
+	previousURL := os.Getenv("PROMETHEUS_URL")
+	if err := os.Setenv("PROMETHEUS_URL", server.URL); err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = os.Setenv("PROMETHEUS_URL", previousURL) }()
+
+	recorder := httptest.NewRecorder()
+	handlePrometheusNodeSummary(recorder, httptest.NewRequest(http.MethodGet, "/api/prometheus/node/summary", nil))
+
+	if recorder.Code != http.StatusBadGateway {
+		t.Fatalf("unexpected status: %d", recorder.Code)
+	}
+	if !strings.Contains(recorder.Body.String(), "failed to query Prometheus for CPU usage") {
+		t.Fatalf("unexpected error: %s", recorder.Body.String())
 	}
 }
