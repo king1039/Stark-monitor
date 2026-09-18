@@ -3,14 +3,7 @@ name: Build Docker Images
 on:
   push:
     branches:
-      - feature/cicd
-      - feature/alert
-      - feature/setting
-      - feature/redis
-      - feature/kafka
-      - feature/postgresql
-      - feature/prometheus
-      - feature/kubernetes
+      - "**"
   workflow_dispatch:
 
 permissions:
