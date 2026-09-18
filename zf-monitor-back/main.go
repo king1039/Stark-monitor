@@ -197,6 +197,7 @@ func main() {
 	http.HandleFunc("/api/database/report", handleDatabaseReport)
 	http.HandleFunc("/api/databases", handleDatabases)
 	http.HandleFunc("/api/database/summary", handleDatabaseSummary)
+	http.HandleFunc("/api/prometheus/query", handlePrometheusQuery)
 	http.Handle("/", http.FileServer(http.Dir("web")))
 
 	server := &http.Server{Addr: ":8080"}

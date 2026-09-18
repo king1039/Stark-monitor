@@ -93,6 +93,9 @@ backend:
 
   replicas: 1
 
+  prometheus:
+    url: http://prometheus-server.monitoring.svc.cluster.local
+    
   containerPort: 8080
   hostPort: 18080
 
