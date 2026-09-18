@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -19,7 +20,17 @@ const (
 	nodeMemoryQuery = `100 * (1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)`
 	nodeDiskQuery   = `100 * (1 - node_filesystem_avail_bytes{mountpoint="/",fstype!~"tmpfs|overlay"} / node_filesystem_size_bytes{mountpoint="/",fstype!~"tmpfs|overlay"})`
 	nodeStatusQuery = `up{service="prometheus-prometheus-node-exporter"}`
+
+	databaseUpQuery              = `stark_database_up`
+	databaseConnectionsQuery     = `stark_database_connections`
+	databaseActiveSessionsQuery  = `stark_database_active_sessions`
+	databaseRunningRequestsQuery = `stark_database_running_requests`
+	databaseCountQuery           = `stark_database_count`
+	databaseSizeBytesQuery       = `stark_database_size_bytes`
+	databaseUptimeSecondsQuery   = `stark_database_uptime_seconds`
 )
+
+var errPrometheusNoValue = errors.New("Prometheus query returned no value")
 
 var prometheusClient = &http.Client{Timeout: 10 * time.Second}
 
@@ -39,6 +50,16 @@ type prometheusNodeSummary struct {
 	CPU    float64 `json:"cpu"`
 	Memory float64 `json:"memory"`
 	Disk   float64 `json:"disk"`
+}
+
+type prometheusDatabaseSummary struct {
+	Status          string  `json:"status"`
+	Connections     float64 `json:"connections"`
+	ActiveSessions  float64 `json:"activeSessions"`
+	RunningRequests float64 `json:"runningRequests"`
+	DatabaseCount   float64 `json:"databaseCount"`
+	SizeBytes       float64 `json:"sizeBytes"`
+	UptimeSeconds   float64 `json:"uptimeSeconds"`
 }
 
 func prometheusURL() string {
@@ -119,7 +140,7 @@ func queryPrometheusValue(query string) (float64, error) {
 		return 0, fmt.Errorf("Prometheus query failed: %s: %s", result.ErrorType, result.Error)
 	}
 	if len(result.Data.Result) == 0 || len(result.Data.Result[0].Value) < 2 {
-		return 0, fmt.Errorf("Prometheus query returned no value")
+		return 0, errPrometheusNoValue
 	}
 
 	var value string
@@ -166,4 +187,48 @@ func handlePrometheusNodeSummary(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(prometheusNodeSummary{Status: status, CPU: cpu, Memory: memory, Disk: disk})
+}
+
+func handlePrometheusDatabaseSummary(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	queries := []struct {
+		query string
+		name  string
+		set   func(*prometheusDatabaseSummary, float64)
+	}{
+		{databaseUpQuery, "database status", func(summary *prometheusDatabaseSummary, value float64) {
+			if value == 1 {
+				summary.Status = "online"
+			} else {
+				summary.Status = "offline"
+			}
+		}},
+		{databaseConnectionsQuery, "connections", func(summary *prometheusDatabaseSummary, value float64) { summary.Connections = value }},
+		{databaseActiveSessionsQuery, "active sessions", func(summary *prometheusDatabaseSummary, value float64) { summary.ActiveSessions = value }},
+		{databaseRunningRequestsQuery, "running requests", func(summary *prometheusDatabaseSummary, value float64) { summary.RunningRequests = value }},
+		{databaseCountQuery, "database count", func(summary *prometheusDatabaseSummary, value float64) { summary.DatabaseCount = value }},
+		{databaseSizeBytesQuery, "database size", func(summary *prometheusDatabaseSummary, value float64) { summary.SizeBytes = value }},
+		{databaseUptimeSecondsQuery, "database uptime", func(summary *prometheusDatabaseSummary, value float64) { summary.UptimeSeconds = value }},
+	}
+
+	summary := prometheusDatabaseSummary{Status: "offline"}
+	for _, item := range queries {
+		value, err := queryPrometheusValue(item.query)
+		if err != nil {
+			if errors.Is(err, errPrometheusNoValue) {
+				http.Error(w, fmt.Sprintf("database metric not found: %s", item.name), http.StatusNotFound)
+				return
+			}
+			http.Error(w, fmt.Sprintf("failed to query Prometheus for %s: %v", item.name, err), http.StatusBadGateway)
+			return
+		}
+		item.set(&summary, value)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(summary)
 }

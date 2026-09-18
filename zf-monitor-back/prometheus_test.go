@@ -134,3 +134,87 @@ func TestHandlePrometheusNodeSummaryReturnsBadGatewayOnFailure(t *testing.T) {
 		t.Fatalf("unexpected error: %s", recorder.Body.String())
 	}
 }
+
+func TestHandlePrometheusDatabaseSummary(t *testing.T) {
+	values := map[string]string{
+		databaseUpQuery:              "1",
+		databaseConnectionsQuery:     "3",
+		databaseActiveSessionsQuery:  "2",
+		databaseRunningRequestsQuery: "1",
+		databaseCountQuery:           "4",
+		databaseSizeBytesQuery:       "2621440",
+		databaseUptimeSecondsQuery:   "3600",
+	}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		value, ok := values[r.URL.Query().Get("query")]
+		if !ok {
+			t.Fatalf("unexpected query: %s", r.URL.Query().Get("query"))
+		}
+		_, _ = w.Write([]byte(`{"status":"success","data":{"resultType":"vector","result":[{"value":["1","` + value + `"]}]}}`))
+	}))
+	defer server.Close()
+
+	previousURL := os.Getenv("PROMETHEUS_URL")
+	if err := os.Setenv("PROMETHEUS_URL", server.URL); err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = os.Setenv("PROMETHEUS_URL", previousURL) }()
+
+	recorder := httptest.NewRecorder()
+	handlePrometheusDatabaseSummary(recorder, httptest.NewRequest(http.MethodGet, "/api/prometheus/database/summary", nil))
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("unexpected status: %d body=%s", recorder.Code, recorder.Body.String())
+	}
+	var summary prometheusDatabaseSummary
+	if err := json.Unmarshal(recorder.Body.Bytes(), &summary); err != nil {
+		t.Fatal(err)
+	}
+	if summary.Status != "online" || summary.Connections != 3 || summary.ActiveSessions != 2 || summary.RunningRequests != 1 || summary.DatabaseCount != 4 || summary.SizeBytes != 2621440 || summary.UptimeSeconds != 3600 {
+		t.Fatalf("unexpected summary: %+v", summary)
+	}
+}
+
+func TestHandlePrometheusDatabaseSummaryReturnsNotFoundForMissingMetric(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Query().Get("query") == databaseUpQuery {
+			_, _ = w.Write([]byte(`{"status":"success","data":{"resultType":"vector","result":[]}}`))
+			return
+		}
+		_, _ = w.Write([]byte(`{"status":"success","data":{"resultType":"vector","result":[{"value":["1","1"]}]}}`))
+	}))
+	defer server.Close()
+
+	previousURL := os.Getenv("PROMETHEUS_URL")
+	if err := os.Setenv("PROMETHEUS_URL", server.URL); err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = os.Setenv("PROMETHEUS_URL", previousURL) }()
+
+	recorder := httptest.NewRecorder()
+	handlePrometheusDatabaseSummary(recorder, httptest.NewRequest(http.MethodGet, "/api/prometheus/database/summary", nil))
+
+	if recorder.Code != http.StatusNotFound {
+		t.Fatalf("unexpected status: %d body=%s", recorder.Code, recorder.Body.String())
+	}
+}
+
+func TestHandlePrometheusDatabaseSummaryReturnsBadGatewayOnFailure(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "query failed", http.StatusBadRequest)
+	}))
+	defer server.Close()
+
+	previousURL := os.Getenv("PROMETHEUS_URL")
+	if err := os.Setenv("PROMETHEUS_URL", server.URL); err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = os.Setenv("PROMETHEUS_URL", previousURL) }()
+
+	recorder := httptest.NewRecorder()
+	handlePrometheusDatabaseSummary(recorder, httptest.NewRequest(http.MethodGet, "/api/prometheus/database/summary", nil))
+
+	if recorder.Code != http.StatusBadGateway {
+		t.Fatalf("unexpected status: %d body=%s", recorder.Code, recorder.Body.String())
+	}
+}
