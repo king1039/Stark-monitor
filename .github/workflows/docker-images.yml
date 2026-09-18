@@ -9,6 +9,8 @@ on:
       - feature/redis
       - feature/kafka
       - feature/postgresql
+      - feature/prometheus
+      - feature/kubernetes
   workflow_dispatch:
 
 permissions:
