@@ -24,6 +24,8 @@ const configFileName = "config.yaml"
 const connectionTimeout = 5 * time.Second
 const placeholderPassword = "CHANGE_ME_BEFORE_RUN"
 
+var currentDatabaseMetrics *databaseMetrics
+
 type Config struct {
 	Interval  int              `yaml:"interval"`
 	Backend   BackendConfig    `yaml:"backend"`
@@ -80,6 +82,23 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
+	currentDatabaseMetrics = newDatabaseMetrics()
+	metricsServer := &http.Server{
+		Addr: metricsAddr(),
+		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.Method != http.MethodGet || r.URL.Path != "/metrics" {
+				http.NotFound(w, r)
+				return
+			}
+			currentDatabaseMetrics.handler().ServeHTTP(w, r)
+		}),
+	}
+	metricsServerErr := make(chan error, 1)
+	go func() {
+		log.Printf("metrics server listening on %s", metricsServer.Addr)
+		metricsServerErr <- metricsServer.ListenAndServe()
+	}()
+
 	fmt.Println("Stark monitor DB Controller starting...")
 	fmt.Printf("Loaded %d database instance(s)\n", len(cfg.Databases))
 
@@ -92,7 +111,17 @@ func main() {
 		select {
 		case <-ctx.Done():
 			fmt.Println("Shutting down DB controller")
+			shutdownContext, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			if err := metricsServer.Shutdown(shutdownContext); err != nil {
+				log.Printf("metrics server shutdown failed: %v", err)
+			}
+			cancel()
 			return
+		case err := <-metricsServerErr:
+			if err != nil && !errors.Is(err, http.ErrServerClosed) {
+				log.Printf("metrics server failed: %v", err)
+			}
+			metricsServerErr = nil
 		case <-ticker.C:
 			collectInstances(cfg)
 		}
@@ -127,6 +156,9 @@ func collectInstances(cfg *Config) {
 				fmt.Printf("[MSSQL] %s connection failed: %v\n", database.InstanceID, err)
 			}
 			if report != nil {
+				if currentDatabaseMetrics != nil {
+					currentDatabaseMetrics.update(report)
+				}
 				if err := postDatabaseReport(cfg.Backend.URL, report); err != nil {
 					log.Printf("[MSSQL] %s backend report warning: %v", database.InstanceID, err)
 				}

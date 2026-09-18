@@ -127,6 +127,10 @@ backend:
 dbController:
   enabled: true
 
+  metrics:
+    enabled: true
+    port: 9101
+
   image:
     repository: ghcr.io/king1039/zf-monitor-db-controller
     tag: "latest"

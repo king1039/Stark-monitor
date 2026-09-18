@@ -5,6 +5,7 @@ kind: Deployment
 metadata:
   name: db-controller
   namespace: {{ .Release.Namespace }}
+
 spec:
   replicas: {{ .Values.dbController.replicas }}
 
@@ -23,6 +24,16 @@ spec:
           image: "{{ .Values.dbController.image.repository }}:{{ .Values.dbController.image.tag }}"
           imagePullPolicy: {{ .Values.dbController.image.pullPolicy }}
 
+{{- if .Values.dbController.metrics.enabled }}
+          ports:
+            - name: metrics
+              containerPort: {{ .Values.dbController.metrics.port }}
+
+          env:
+            - name: METRICS_ADDR
+              value: ":{{ .Values.dbController.metrics.port }}"
+{{- end }}
+
           resources:
 {{ toYaml .Values.dbController.resources | indent 12 }}
 
@@ -32,10 +43,8 @@ spec:
               subPath: {{ .Values.dbController.config.secretKey }}
 
 {{- if .Values.dbController.hostPath.enabled }}
-
             - name: backend-data
               mountPath: {{ .Values.dbController.hostPath.mountPath }}
-
 {{- end }}
 
       volumes:
@@ -44,12 +53,39 @@ spec:
             secretName: {{ .Values.dbController.config.existingSecret }}
 
 {{- if .Values.dbController.hostPath.enabled }}
-
         - name: backend-data
           hostPath:
             path: {{ .Values.dbController.hostPath.path }}
             type: DirectoryOrCreate
+{{- end }}
 
 {{- end }}
+
+
+{{- if .Values.dbController.metrics.enabled }}
+
+---
+apiVersion: v1
+kind: Service
+
+metadata:
+  name: db-controller-metrics
+  namespace: {{ .Release.Namespace }}
+
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/path: "/metrics"
+    prometheus.io/port: {{ .Values.dbController.metrics.port | quote }}
+
+spec:
+  type: ClusterIP
+
+  selector:
+    app: db-controller
+
+  ports:
+    - name: metrics
+      port: {{ .Values.dbController.metrics.port }}
+      targetPort: metrics
 
 {{- end }}
