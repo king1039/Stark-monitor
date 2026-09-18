@@ -789,6 +789,64 @@ body {
   text-align: center !important;
 }
 
+.prometheus-page {
+  display: block;
+}
+
+.prometheus-header {
+  margin-bottom: 20px;
+}
+
+.prometheus-header h1 {
+  margin: 0;
+  font-size: clamp(1.75rem, 2vw, 2.3rem);
+  font-weight: 700;
+}
+
+.prometheus-state {
+  color: var(--muted);
+  padding: 12px 0 18px;
+}
+
+.prometheus-section {
+  margin-bottom: 22px;
+  padding: 16px 18px 18px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+
+.prometheus-metric-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.prometheus-metric-card {
+  min-height: 104px;
+  padding: 16px;
+  background: var(--panel-alt);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.prometheus-card-label {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.prometheus-card-value {
+  font-size: clamp(1.2rem, 1.8vw, 1.8rem);
+  font-weight: 700;
+  line-height: 1.1;
+  overflow-wrap: anywhere;
+}
+
 .alerts-page {
   display: block;
 }
@@ -1258,6 +1316,10 @@ body {
     grid-template-columns: repeat(2, minmax(180px, 1fr));
   }
 
+  .prometheus-metric-grid {
+    grid-template-columns: repeat(2, minmax(180px, 1fr));
+  }
+
   .dashboard-grid {
     grid-template-columns: 1fr;
   }
@@ -1281,6 +1343,10 @@ body {
   }
 
   .database-metric-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .prometheus-metric-grid {
     grid-template-columns: 1fr;
   }
 

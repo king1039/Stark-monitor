@@ -18,6 +18,7 @@
           <button type="button" class="nav-item active" data-page="overview">Overview</button>
           <button type="button" class="nav-item" data-page="hosts">Hosts</button>
           <button type="button" class="nav-item" data-page="database">Database</button>
+          <button type="button" class="nav-item" data-page="prometheus">Prometheus Monitor</button>
           <button type="button" class="nav-item" data-page="alerts">Alerts</button>
           <button type="button" class="nav-item" data-page="settings">Settings</button>
         </nav>
@@ -266,6 +267,77 @@
               </table>
             </div>
           </article>
+        </section>
+
+        <section id="prometheus-page" class="page-view prometheus-page hidden">
+          <div class="prometheus-header">
+            <h1>Prometheus Monitor</h1>
+          </div>
+
+          <div id="prometheus-loading" class="prometheus-state" role="status">Loading Prometheus metrics...</div>
+          <div id="prometheus-error" class="page-error hidden" role="alert">Unable to load Prometheus metrics.</div>
+
+          <div id="prometheus-content" class="prometheus-content hidden">
+            <section class="prometheus-section">
+              <div class="panel-head">
+                <h2>Node Monitoring</h2>
+              </div>
+              <div class="prometheus-metric-grid node-prometheus-grid">
+                <article class="prometheus-metric-card">
+                  <span class="prometheus-card-label">CPU</span>
+                  <strong id="prometheus-node-cpu" class="prometheus-card-value">-</strong>
+                </article>
+                <article class="prometheus-metric-card">
+                  <span class="prometheus-card-label">Memory</span>
+                  <strong id="prometheus-node-memory" class="prometheus-card-value">-</strong>
+                </article>
+                <article class="prometheus-metric-card">
+                  <span class="prometheus-card-label">Disk</span>
+                  <strong id="prometheus-node-disk" class="prometheus-card-value">-</strong>
+                </article>
+                <article class="prometheus-metric-card">
+                  <span class="prometheus-card-label">Status</span>
+                  <strong id="prometheus-node-status" class="prometheus-card-value">-</strong>
+                </article>
+              </div>
+            </section>
+
+            <section class="prometheus-section">
+              <div class="panel-head">
+                <h2>Database Monitoring</h2>
+              </div>
+              <div class="prometheus-metric-grid database-prometheus-grid">
+                <article class="prometheus-metric-card">
+                  <span class="prometheus-card-label">Status</span>
+                  <strong id="prometheus-database-status" class="prometheus-card-value">-</strong>
+                </article>
+                <article class="prometheus-metric-card">
+                  <span class="prometheus-card-label">Connections</span>
+                  <strong id="prometheus-database-connections" class="prometheus-card-value">-</strong>
+                </article>
+                <article class="prometheus-metric-card">
+                  <span class="prometheus-card-label">Active Sessions</span>
+                  <strong id="prometheus-database-active-sessions" class="prometheus-card-value">-</strong>
+                </article>
+                <article class="prometheus-metric-card">
+                  <span class="prometheus-card-label">Running Requests</span>
+                  <strong id="prometheus-database-running-requests" class="prometheus-card-value">-</strong>
+                </article>
+                <article class="prometheus-metric-card">
+                  <span class="prometheus-card-label">Database Count</span>
+                  <strong id="prometheus-database-count" class="prometheus-card-value">-</strong>
+                </article>
+                <article class="prometheus-metric-card">
+                  <span class="prometheus-card-label">Size Bytes</span>
+                  <strong id="prometheus-database-size-bytes" class="prometheus-card-value">-</strong>
+                </article>
+                <article class="prometheus-metric-card">
+                  <span class="prometheus-card-label">Uptime Seconds</span>
+                  <strong id="prometheus-database-uptime" class="prometheus-card-value">-</strong>
+                </article>
+              </div>
+            </section>
+          </div>
         </section>
 
         <section id="alerts-page" class="page-view alerts-page hidden">

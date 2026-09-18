@@ -94,6 +94,20 @@ const els = {
   systemDatabaseSize: document.getElementById('system-database-size'),
   systemVersion: document.getElementById('system-version'),
   systemUptime: document.getElementById('system-uptime'),
+  prometheusLoading: document.getElementById('prometheus-loading'),
+  prometheusError: document.getElementById('prometheus-error'),
+  prometheusContent: document.getElementById('prometheus-content'),
+  prometheusNodeCpu: document.getElementById('prometheus-node-cpu'),
+  prometheusNodeMemory: document.getElementById('prometheus-node-memory'),
+  prometheusNodeDisk: document.getElementById('prometheus-node-disk'),
+  prometheusNodeStatus: document.getElementById('prometheus-node-status'),
+  prometheusDatabaseStatus: document.getElementById('prometheus-database-status'),
+  prometheusDatabaseConnections: document.getElementById('prometheus-database-connections'),
+  prometheusDatabaseActiveSessions: document.getElementById('prometheus-database-active-sessions'),
+  prometheusDatabaseRunningRequests: document.getElementById('prometheus-database-running-requests'),
+  prometheusDatabaseCount: document.getElementById('prometheus-database-count'),
+  prometheusDatabaseSizeBytes: document.getElementById('prometheus-database-size-bytes'),
+  prometheusDatabaseUptime: document.getElementById('prometheus-database-uptime'),
 };
 
 function setPageError(message) {
@@ -159,6 +173,12 @@ function switchPage(pageName) {
   if (pageName === 'database') {
     document.getElementById('database-page').classList.remove('hidden');
     loadDatabases();
+    return;
+  }
+
+  if (pageName === 'prometheus') {
+    document.getElementById('prometheus-page').classList.remove('hidden');
+    loadPrometheusMonitor();
     return;
   }
 
@@ -1299,6 +1319,79 @@ async function loadDatabaseSummary(instanceId) {
   }
 }
 
+function setPrometheusLoading(isLoading) {
+  if (els.prometheusLoading) {
+    els.prometheusLoading.classList.toggle('hidden', !isLoading);
+  }
+  if (els.prometheusContent) {
+    els.prometheusContent.classList.toggle('hidden', isLoading);
+  }
+}
+
+function setPrometheusError(message) {
+  if (!els.prometheusError) {
+    return;
+  }
+  els.prometheusError.textContent = message;
+  els.prometheusError.classList.remove('hidden');
+}
+
+function clearPrometheusError() {
+  if (els.prometheusError) {
+    els.prometheusError.textContent = '';
+    els.prometheusError.classList.add('hidden');
+  }
+}
+
+function renderPrometheusMonitor(node, database) {
+  const nodeStatus = String(node.status || 'offline').toLowerCase();
+  const databaseStatus = String(database.status || 'offline').toLowerCase();
+  const setText = (element, value) => {
+    if (element) {
+      element.textContent = value;
+    }
+  };
+  const numberText = (value, digits = 1) => hasValidNumber(value) ? Number(value).toFixed(digits) : '-';
+
+  setText(els.prometheusNodeCpu, `${numberText(node.cpu)}%`);
+  setText(els.prometheusNodeMemory, `${numberText(node.memory)}%`);
+  setText(els.prometheusNodeDisk, `${numberText(node.disk)}%`);
+  setText(els.prometheusNodeStatus, nodeStatus === 'online' ? 'Online' : 'Offline');
+  setText(els.prometheusDatabaseStatus, databaseStatus === 'online' ? 'Online' : 'Offline');
+  setText(els.prometheusDatabaseConnections, numberText(database.connections));
+  setText(els.prometheusDatabaseActiveSessions, numberText(database.activeSessions));
+  setText(els.prometheusDatabaseRunningRequests, numberText(database.runningRequests));
+  setText(els.prometheusDatabaseCount, numberText(database.databaseCount));
+  setText(els.prometheusDatabaseSizeBytes, numberText(database.sizeBytes));
+  setText(els.prometheusDatabaseUptime, numberText(database.uptimeSeconds));
+}
+
+async function loadPrometheusMonitor() {
+  if (state.activePage !== 'prometheus') {
+    return;
+  }
+
+  setPrometheusLoading(true);
+  clearPrometheusError();
+  try {
+    const [nodeResponse, databaseResponse] = await Promise.all([
+      fetch('/api/prometheus/node/summary', { cache: 'no-store' }),
+      fetch('/api/prometheus/database/summary', { cache: 'no-store' }),
+    ]);
+    if (!nodeResponse.ok || !databaseResponse.ok) {
+      throw new Error('Prometheus monitor request failed');
+    }
+
+    const [node, database] = await Promise.all([nodeResponse.json(), databaseResponse.json()]);
+    renderPrometheusMonitor(node, database);
+    setPrometheusLoading(false);
+  } catch (err) {
+    console.error('Prometheus monitor fetch failed', err);
+    setPrometheusLoading(false);
+    setPrometheusError('Unable to load Prometheus monitoring data.');
+  }
+}
+
 function setSettingsMessage(message, type = 'success') {
   if (!els.settingsMessage) return;
   els.settingsMessage.textContent = message;
@@ -1544,6 +1637,11 @@ window.addEventListener('load', () => {
   setInterval(() => {
     if (state.activePage === 'database') {
       loadDatabases();
+    }
+  }, 10000);
+  setInterval(() => {
+    if (state.activePage === 'prometheus') {
+      loadPrometheusMonitor();
     }
   }, 10000);
 });
