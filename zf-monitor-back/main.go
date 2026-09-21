@@ -15,6 +15,8 @@ import (
 	"syscall"
 	"time"
 
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+
 	otelsetup "zf-monitor-back/internal/otel"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
@@ -222,7 +224,10 @@ func main() {
 	http.HandleFunc("/api/prometheus/database/summary", handlePrometheusDatabaseSummary)
 	http.Handle("/", http.FileServer(http.Dir("web")))
 
-	server := &http.Server{Addr: ":8080"}
+	server := &http.Server{
+		Addr:    ":8080",
+		Handler: otelhttp.NewHandler(http.DefaultServeMux, "zf-monitor-back"),
+	}
 	serverContext, stopServer := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stopServer()
 
