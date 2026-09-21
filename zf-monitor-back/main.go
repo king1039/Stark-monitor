@@ -15,6 +15,8 @@ import (
 	"syscall"
 	"time"
 
+	otelsetup "zf-monitor-back/internal/otel"
+
 	_ "github.com/jackc/pgx/v5/stdlib"
 	_ "modernc.org/sqlite"
 )
@@ -161,6 +163,24 @@ var (
 )
 
 func main() {
+	otelContext := context.Background()
+
+	tracerProvider, err := otelsetup.Init(otelContext)
+	if err != nil {
+		log.Fatalf("failed to initialize opentelemetry: %v", err)
+	}
+
+	defer func() {
+		shutdownContext, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		if err := tracerProvider.Shutdown(shutdownContext); err != nil {
+			log.Printf("opentelemetry shutdown failed: %v", err)
+		}
+	}()
+
+	log.Println("opentelemetry initialized")
+
 	db, driverName, err := initDatabase()
 	if err != nil {
 		log.Fatal(err)
